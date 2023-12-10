@@ -780,6 +780,61 @@ func (c *Conn) WriteMessage(messageType int, data []byte) error {
 	return w.Close()
 }
 
+// ServerMessageHeader assemble server message header.
+func ServerMessageHeader(messageType, messageLen int) []byte {
+	var header [10]byte // 2 + 8 : Fixed header + length
+
+	b0 := byte(messageType)
+	b0 |= finalBit
+
+	b1 := byte(0)
+
+	framePos := 0
+
+	switch {
+	case messageLen >= 65536:
+		header[framePos] = b0
+		header[framePos+1] = b1 | 127
+		binary.BigEndian.PutUint64(header[framePos+2:], uint64(messageLen))
+	case messageLen > 125:
+		framePos += 6
+		header[framePos] = b0
+		header[framePos+1] = b1 | 126
+		binary.BigEndian.PutUint16(header[framePos+2:], uint16(messageLen))
+	default:
+		framePos += 8
+		header[framePos] = b0
+		header[framePos+1] = b1 | byte(messageLen)
+	}
+
+	return header[framePos:]
+}
+
+// WriteRawMessages can write raw messages in batches.
+func (c *Conn) WriteRawMessages(messages net.Buffers) error {
+	<-c.mu
+	defer func() { c.mu <- struct{}{} }()
+
+	c.writeErrMu.Lock()
+	err := c.writeErr
+	c.writeErrMu.Unlock()
+	if err != nil {
+		return err
+	}
+
+	c.conn.SetWriteDeadline(c.writeDeadline)
+	if len(messages) == 0 {
+		_, err = c.conn.Write(messages[0])
+	} else {
+		_, err = messages.WriteTo(c.conn)
+	}
+
+	if err != nil {
+		return c.writeFatal(err)
+	}
+	return nil
+}
+
 // SetWriteDeadline sets the write deadline on the underlying network
 // connection. After a write has timed out, the websocket state is corrupt and
 // all future writes will return an error. A zero value for t means writes will

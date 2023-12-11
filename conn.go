@@ -823,7 +823,7 @@ func (c *Conn) WriteRawMessages(messages net.Buffers) error {
 	}
 
 	c.conn.SetWriteDeadline(c.writeDeadline)
-	if len(messages) == 0 {
+	if len(messages) == 1 {
 		_, err = c.conn.Write(messages[0])
 	} else {
 		_, err = messages.WriteTo(c.conn)

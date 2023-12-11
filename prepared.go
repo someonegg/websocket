@@ -59,6 +59,14 @@ func NewPreparedMessage(messageType int, data []byte) (*PreparedMessage, error) 
 	return pm, nil
 }
 
+func (pm *PreparedMessage) Frame(isServer bool, compress bool, compressionLevel int) (frameType int, frameData []byte, err error) {
+	return pm.frame(prepareKey{
+		isServer:         isServer,
+		compress:         compress,
+		compressionLevel: compressionLevel,
+	})
+}
+
 func (pm *PreparedMessage) frame(key prepareKey) (int, []byte, error) {
 	pm.mu.Lock()
 	frame, ok := pm.frames[key]

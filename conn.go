@@ -811,7 +811,7 @@ func ServerMessageHeader(messageType, messageLen int) []byte {
 }
 
 // WriteRawMessages can write raw messages in batches.
-func (c *Conn) WriteRawMessages(messages net.Buffers) error {
+func (c *Conn) WriteRawMessages(messages *net.Buffers) error {
 	<-c.mu
 	defer func() { c.mu <- struct{}{} }()
 
@@ -823,8 +823,8 @@ func (c *Conn) WriteRawMessages(messages net.Buffers) error {
 	}
 
 	c.conn.SetWriteDeadline(c.writeDeadline)
-	if len(messages) == 1 {
-		_, err = c.conn.Write(messages[0])
+	if len(*messages) == 1 {
+		_, err = c.conn.Write((*messages)[0])
 	} else {
 		_, err = messages.WriteTo(c.conn)
 	}
